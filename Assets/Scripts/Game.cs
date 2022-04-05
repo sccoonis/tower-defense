@@ -1,44 +1,72 @@
+using System.Collections;
 using TMPro;
 using UnityEngine;
 
 public class Game : MonoBehaviour
 {
-    public Camera raycastCamera;
-    
-    public TextMeshProUGUI coinsUI;
-    
-    public int coinCount;
+    public Transform NavmeshEnemy;
+    public int numEnemiesToSpawn = 1;
+    public Transform[] waypointList;
 
-    void Start()
+    public TextMeshProUGUI coinsText;
+    
+    public GameObject Tower;
+
+    private int treasury = 10;
+
+    //-----------------------------------------------------------------------------
+    IEnumerator Start()
     {
-        coinCount = 10;
+        coinsText.text = "Coins: " + treasury;
         
-        coinsUI.text = "Coins: " + coinCount;
+        int enemiesSpawned = 0;
+        while (enemiesSpawned < numEnemiesToSpawn)
+        {
+            Transform newEnemyTransform = Instantiate(NavmeshEnemy);
+            NavmeshEnemy newEnemy = newEnemyTransform.GetComponent<NavmeshEnemy>();
+            if (newEnemy)
+            {
+                newEnemy.OnEnemyDied += OnEnemyDied;
+                newEnemy.WaypointList = waypointList;
+            }
+            enemiesSpawned++;
+
+            yield return new WaitForSeconds(2f);
+        }
     }
 
-    void Update()
+    private void Update()
     {
-        coinsUI.text = "Coins: " + coinCount;
-
-        Ray ray = raycastCamera.ScreenPointToRay(Input.mousePosition);
-        if (Physics.Raycast(ray, out RaycastHit hitInfo))
+        coinsText.text = "Coins: " + treasury;
+        
+        if (Input.GetMouseButtonDown(0))
         {
-            if (hitInfo.transform.name == "Enemy" || hitInfo.transform.name == "Enemy(Clone)")
-            {
-                if (Input.GetMouseButtonDown(0))
+            Ray ray = Camera.main.ScreenPointToRay(new Vector3(Input.mousePosition.x, Input.mousePosition.y,
+                Camera.main.transform.position.z));
+            RaycastHit hit;
+            if (Physics.Raycast(ray, out hit))
+                if (hit.transform.tag == "TowerSpot")
                 {
-                    hitInfo.collider.GetComponent<EnemyDemo>().health--;
-                    Debug.Log(hitInfo.collider.GetComponent<EnemyDemo>().health);
-
-                    if (hitInfo.collider.GetComponent<EnemyDemo>().health <= 0)
+                    if (treasury >= 5)
                     {
-                        Destroy(hitInfo.collider.gameObject);
-                        coinCount += hitInfo.collider.GetComponent<EnemyDemo>().coinValue;
-                        //Debug.Log("Got him! Coin count is " + coinCount);
+                        treasury = treasury - 5;
+                        hit.transform.gameObject.SetActive(false);
+                        PlaceTower(hit.transform.position);
                     }
                 }
-            }
-
         }
+    }
+
+    //-----------------------------------------------------------------------------
+    void OnEnemyDied(NavmeshEnemy deadEnemy)
+    {
+        deadEnemy.OnEnemyDied -= OnEnemyDied;
+        treasury += deadEnemy.coinReward;
+        coinsText.text = $"Coins: {treasury}";
+    }
+    
+    void PlaceTower(Vector3 position)
+    {
+        Instantiate(Tower, position, Quaternion.identity, transform);
     }
 }

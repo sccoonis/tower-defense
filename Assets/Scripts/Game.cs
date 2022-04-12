@@ -1,6 +1,7 @@
 using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class Game : MonoBehaviour
 {
@@ -12,33 +13,26 @@ public class Game : MonoBehaviour
     
     public GameObject Tower;
 
+    public AudioClip noise;
+
+    public GameObject startButton;
+
     private int treasury = 10;
 
+    private int killTarget;
+    
+    private bool waveActive = false;
+    
     //-----------------------------------------------------------------------------
-    IEnumerator Start()
+    private void Start()
     {
         coinsText.text = "Coins: " + treasury;
-        
-        int enemiesSpawned = 0;
-        while (enemiesSpawned < numEnemiesToSpawn)
-        {
-            Transform newEnemyTransform = Instantiate(NavmeshEnemy);
-            NavmeshEnemy newEnemy = newEnemyTransform.GetComponent<NavmeshEnemy>();
-            if (newEnemy)
-            {
-                newEnemy.OnEnemyDied += OnEnemyDied;
-                newEnemy.WaypointList = waypointList;
-            }
-            enemiesSpawned++;
-
-            yield return new WaitForSeconds(2f);
-        }
     }
 
     private void Update()
     {
         coinsText.text = "Coins: " + treasury;
-        
+
         if (Input.GetMouseButtonDown(0))
         {
             Ray ray = Camera.main.ScreenPointToRay(new Vector3(Input.mousePosition.x, Input.mousePosition.y,
@@ -55,18 +49,72 @@ public class Game : MonoBehaviour
                     }
                 }
         }
+
+        if (killTarget <= 0)
+        {
+            waveActive = false;
+        }
+        
+        if (waveActive)
+        {
+            startButton.SetActive(false);
+        }
+        else
+        {
+            startButton.SetActive(true);
+        }
+        
     }
 
     //-----------------------------------------------------------------------------
-    void OnEnemyDied(NavmeshEnemy deadEnemy)
+    public void OnEnemyDied(NavmeshEnemy deadEnemy)
     {
         deadEnemy.OnEnemyDied -= OnEnemyDied;
         treasury += deadEnemy.coinReward;
         coinsText.text = $"Coins: {treasury}";
+        AudioSource audioSource = GetComponent<AudioSource>();
+        audioSource.clip = noise;
+        audioSource.Play();
+        killTarget--;
     }
     
     void PlaceTower(Vector3 position)
     {
         Instantiate(Tower, position, Quaternion.identity, transform);
+    }
+    
+    public void LoadScene(string scene)
+    {
+        SceneManager.LoadScene(scene);
+    }
+    
+    IEnumerator Spawn()
+    {
+        waveActive = true;
+        
+        int enemiesSpawned = 0;
+        killTarget = 0;
+        
+        while (enemiesSpawned < numEnemiesToSpawn)
+        {
+            Transform newEnemyTransform = Instantiate(NavmeshEnemy);
+            NavmeshEnemy newEnemy = newEnemyTransform.GetComponent<NavmeshEnemy>();
+            if (newEnemy)
+            {
+                newEnemy.OnEnemyDied += OnEnemyDied;
+                newEnemy.WaypointList = waypointList;
+            }
+            enemiesSpawned++;
+            killTarget++;
+
+            yield return new WaitForSeconds(2f);
+        }
+    }
+
+    public void SpawnWave()
+    {
+        numEnemiesToSpawn++;
+        StartCoroutine(Spawn());
+        //StopCoroutine(Spawn());
     }
 }

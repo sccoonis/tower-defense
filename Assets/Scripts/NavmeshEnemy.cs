@@ -90,7 +90,7 @@ public int health = 3;
             targetPosition = GetNavmeshPosition(WaypointList[index].transform.position);
             myAgent.SetDestination(targetPosition);
 
-            Debug.Log($"Set Destination to point {index}");
+            // Debug.Log($"Set Destination to point {index}");
         }
     }
 
